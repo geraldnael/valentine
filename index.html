@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For My Favorite Person ❤️</title>
+
+<style>
+:root{
+    --pink:#ff4d6d;
+    --dark:#c9184a;
+    --soft:#fff0f3;
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:var(--soft);
+    font-family:Georgia,serif;
+    text-align:center;
+    transition:background 1s;
+}
+
+.card{
+    background:white;
+    padding:30px;
+    border-radius:28px;
+    box-shadow:0 20px 45px rgba(255,77,109,.25);
+    width:90%;
+    max-width:420px;
+}
+
+button{
+    padding:12px 30px;
+    border:none;
+    border-radius:30px;
+    background:var(--pink);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{background:var(--dark)}
+
+input{
+    padding:12px;
+    width:70%;
+    border-radius:15px;
+    border:2px solid #ffb3c1;
+    text-align:center;
+}
+
+#mainContent{display:none}
+
+/* ================= GAME ================= */
+#board{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:8px;
+    max-width:300px;
+    margin:20px auto;
+}
+
+.tile{
+    width:45px;
+    height:45px;
+    border-radius:12px;
+    font-size:24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#ffb3c1;
+    cursor:pointer;
+    transition:
+        transform .25s cubic-bezier(.22,1,.36,1),
+        opacity .25s;
+}
+
+.tile.selected{
+    outline:3px solid white;
+    transform:scale(1.15);
+}
+
+/* POP (match) */
+.tile.pop{
+    animation:pop .3s forwards;
+}
+@keyframes pop{
+    0%{transform:scale(1)}
+    50%{transform:scale(1.4)}
+    100%{transform:scale(0);opacity:0}
+}
+
+/* DROP */
+.tile.drop{
+    animation:drop .35s ease-in;
+}
+@keyframes drop{
+    from{transform:translateY(-25px)}
+    to{transform:translateY(0)}
+}
+
+/* REFILL */
+.tile.fade{
+    animation:fade .4s ease;
+}
+@keyframes fade{
+    from{opacity:0;transform:scale(.6)}
+    to{opacity:1;transform:scale(1)}
+}
+
+/* ================= LETTER ================= */
+#questionArea{display:none}
+
+.letter{
+    margin-top:20px;
+    background:#fffcf2;
+    padding:25px;
+    border-left:10px solid var(--pink);
+    text-align:left;
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card" id="lockScreen">
+    <h2 style="color:var(--pink)">💖 Our Secret Memory</h2>
+    <p>Masukkan tanggal jadian kita</p>
+    <input id="passInput" maxlength="6" placeholder="DDMMYY">
+    <br><br>
+    <button onclick="unlock()">Unlock Heart</button>
+</div>
+
+<div class="card" id="mainContent">
+
+    <!-- GAME -->
+    <div id="gameArea">
+        <h2 style="color:var(--pink)">Match the Hearts 💕</h2>
+        <p>Cocokkan 5 hati untuk membuka pertanyaan</p>
+        <div id="board"></div>
+        <p id="status">Love Score: 0 / 5</p>
+    </div>
+
+    <!-- QUESTION -->
+    <div id="questionArea">
+        <h2 style="color:var(--pink)">Will you be my Valentine? 🌹</h2>
+        <button onclick="showLetter()">Yes, I Will ❤️</button>
+        <button id="noBtn" onmouseover="moveNo()">No</button>
+    </div>
+
+    <!-- LETTER -->
+    <div class="letter" id="finalLetter">
+        <h3 style="color:var(--pink);text-align:center">Dear My Loveee,</h3>
+        <p>Happy Valentine’s Day Sayaaang🤍</p>
+        <p>Aku bersyukur bukan hanya karena aku mencintaimu, tapi karena aku tumbuh bersamamu. Terima kasih sudah berjalan di sampingku, bukan di depanku atau di belakangku. Semoga kita terus saling belajar, saling menguatkan, dan saling memilih, bahkan saat keadaan tidak mudah.</p>
+        <p style="text-align:right;font-weight:bold;color:var(--pink)">
+            — Selamanya Sayangmu ✨
+        </p>
+    </div>
+
+</div>
+
+<script>
+/* ---------- UNLOCK ---------- */
+function unlock(){
+    if(passInput.value==='170126'){
+        lockScreen.style.display='none';
+        mainContent.style.display='block';
+        initBoard();
+    }else alert('Salah 😝 coba ingat lagi');
+}
+
+/* ---------- GAME ENGINE ---------- */
+const size=6;
+const symbols=['❤️','💗','💖','💘'];
+let board=[];
+let selected=null;
+let score=0;
+
+function initBoard(){
+    board=[];
+    score=0;
+    status.innerText='Love Score: 0 / 5';
+    for(let i=0;i<size*size;i++){
+        board.push(symbols[rand()]);
+    }
+    draw();
+}
+
+function draw(extraClass){
+    boardDiv.innerHTML='';
+    board.forEach((val,i)=>{
+        const d=document.createElement('div');
+        d.className='tile';
+        if(extraClass) d.classList.add(extraClass);
+        d.innerText=val;
+        d.onclick=()=>select(i,d);
+        boardDiv.appendChild(d);
+    });
+}
+
+function select(i,el){
+    if(selected===null){
+        selected=i;
+        el.classList.add('selected');
+    }else{
+        swap(selected,i);
+        selected=null;
+        setTimeout(resolveMatches,200);
+    }
+}
+
+function swap(a,b){
+    [board[a],board[b]]=[board[b],board[a]];
+    draw();
+}
+
+function resolveMatches(){
+    const matches=findMatches();
+    if(matches.length){
+        matches.forEach(i=>{
+            boardDiv.children[i].classList.add('pop');
+        });
+        setTimeout(()=>{
+            matches.forEach(i=>board[i]=null);
+            score++;
+            status.innerText=`Love Score: ${score} / 5`;
+            gravity();
+            refill();
+            draw('drop');
+            setTimeout(resolveMatches,300);
+        },300);
+    }
+    if(score>=5){
+        gameArea.style.display='none';
+        questionArea.style.display='block';
+    }
+}
+
+function findMatches(){
+    let m=[];
+    for(let r=0;r<size;r++){
+        for(let c=0;c<size-2;c++){
+            let i=r*size+c;
+            if(board[i]&&board[i]===board[i+1]&&board[i]===board[i+2])
+                m.push(i,i+1,i+2);
+        }
+    }
+    for(let c=0;c<size;c++){
+        for(let r=0;r<size-2;r++){
+            let i=r*size+c;
+            if(board[i]&&board[i]===board[i+size]&&board[i]===board[i+2*size])
+                m.push(i,i+size,i+2*size);
+        }
+    }
+    return [...new Set(m)];
+}
+
+function gravity(){
+    for(let c=0;c<size;c++){
+        let col=[];
+        for(let r=0;r<size;r++){
+            let i=r*size+c;
+            if(board[i]) col.push(board[i]);
+        }
+        while(col.length<size) col.unshift(null);
+        for(let r=0;r<size;r++){
+            board[r*size+c]=col[r];
+        }
+    }
+}
+
+function refill(){
+    board=board.map(v=>v??symbols[rand()]);
+}
+
+function rand(){return Math.floor(Math.random()*symbols.length);}
+
+/* ---------- QUESTION ---------- */
+function moveNo(){
+    noBtn.style.position='fixed';
+    noBtn.style.left=Math.random()*(innerWidth-80)+'px';
+    noBtn.style.top=Math.random()*(innerHeight-40)+'px';
+}
+
+function showLetter(){
+    questionArea.style.display='none';
+    finalLetter.style.display='block';
+    document.body.style.background='#ffc2d1';
+}
+
+/* DOM */
+const boardDiv=document.getElementById('board');
+const status=document.getElementById('status');
+const gameArea=document.getElementById('gameArea');
+const questionArea=document.getElementById('questionArea');
+const finalLetter=document.getElementById('finalLetter');
+const lockScreen=document.getElementById('lockScreen');
+const mainContent=document.getElementById('mainContent');
+const passInput=document.getElementById('passInput');
+const noBtn=document.getElementById('noBtn');
+</script>
+
+</body>
+</html>
